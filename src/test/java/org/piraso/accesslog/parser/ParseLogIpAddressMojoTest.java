@@ -12,8 +12,9 @@ public class ParseLogIpAddressMojoTest {
 
         mojo.setLog(new SystemStreamLog());
 
-        mojo.setLogDirectory(new File("/adchemy/alps/alps-ss02.prodsv4.adchemy.colo"));
+        mojo.setLogDirectory(new File("/adchemy/alps/alps-cs04.prodsv4.adchemy.colo"));
         mojo.setOutputFile(new File("/adchemy/alps/alps-cs04-ips.csv"));
+        //mojo.setStatusUrl("/alps-snapshot/status");
 
         mojo.execute();
     }

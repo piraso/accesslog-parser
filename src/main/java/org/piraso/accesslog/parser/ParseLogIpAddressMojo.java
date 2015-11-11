@@ -14,8 +14,9 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 @Mojo(name = "parselogs-url", defaultPhase = LifecyclePhase.PACKAGE, threadSafe = true, requiresDependencyResolution = ResolutionScope.RUNTIME)
@@ -30,6 +31,8 @@ public class ParseLogIpAddressMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.basedir}/target/ips.csv")
     private File outputFile;
 
+    private String statusUrl = "/alps-cs/status";
+
     void setLogDirectory(File logDirectory) {
         this.logDirectory = logDirectory;
     }
@@ -38,18 +41,22 @@ public class ParseLogIpAddressMojo extends AbstractMojo {
         this.outputFile = outputFile;
     }
 
+    void setStatusUrl(String statusUrl) {
+        this.statusUrl = statusUrl;
+    }
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        Set<String> ips = new HashSet<String>();
+        Map<String, AtomicInteger> ips = new HashMap<String, AtomicInteger>();
         File[] files = logDirectory.listFiles();
         for (File file : files) {
             processFile(ips, file);
         }
 
-        getLog().info("Ip Address: \n" + StringUtils.join(ips, "\n"));
+        getLog().info("Ip Address: \n" + StringUtils.join(ips.entrySet().iterator(), "\n"));
     }
 
-    private void processFile(Set<String> ips, File file) {
+    private void processFile(Map<String, AtomicInteger> ips, File file) {
         getLog().info("Processing file: " + file.getAbsolutePath());
 
         CSVReader reader = null;
@@ -64,7 +71,16 @@ public class ParseLogIpAddressMojo extends AbstractMojo {
             String[] line;
             while((line = reader.readNext()) != null) {
                 if(line.length > 6) {
-                    ips.add(line[6]);
+                    String url = line[5].split(" ")[1];
+                    if(!StringUtils.startsWith(url, statusUrl)) {
+                        AtomicInteger item = ips.get(line[6]);
+
+                        if(item != null) {
+                            item.incrementAndGet();
+                        } else {
+                            ips.put(line[6], new AtomicInteger(1));
+                        }
+                    }
                 }
             }
         } catch(Exception e) {
